@@ -1,205 +1,66 @@
-# APPLICATION CONFIGURATION FILE
-#
-# YAML vs PROPERTIES:
-# Spring Boot supports both application.yml and application.properties
-# YAML is more readable and supports hierarchical structure
-#
-# application.properties:
-#   spring.application.name=order-service
-#   server.port=8081
-#
-# application.yml:
-#   spring:
-#     application:
-#       name: order-service
-#   server:
-#     port: 8081
-
-# SERVER CONFIGURATION
 server:
-  port: 8081  # Port for this microservice
-  # In production, use environment variable: ${PORT:8081}
+  port: ${PORT:8080}
 
-# SPRING APPLICATION
 spring:
   application:
-    name: order-service  # Service name for discovery and logging
+    name: order-service
   
-  # MONGODB CONFIGURATION
   data:
     mongodb:
-      # Connection string format: mongodb://host:port/database
-      uri: mongodb://localhost:27017/order-db
-      # In production, use environment variable:
-      # uri: ${MONGODB_URI:mongodb://localhost:27017/order-db}
-      
-      # Alternative configuration (if not using URI):
-      # host: localhost
-      # port: 27017
-      # database: order-db
-      # username: ${MONGODB_USER:}
-      # password: ${MONGODB_PASSWORD:}
-      # authentication-database: admin
+      uri: ${SPRING_DATA_MONGODB_URI:mongodb://localhost:27017/order-db}
   
-  # SPRING CLOUD STREAM CONFIGURATION
-  # This configures event-driven messaging
   cloud:
-    # FUNCTION DEFINITION
-    # Lists all Consumer/Function/Supplier beans to bind
     function:
       definition: inventoryEventConsumer
-      # Multiple functions: inventoryEventConsumer;anotherConsumer
     
     stream:
-      # BINDINGS CONFIGURATION
-      # Maps function inputs/outputs to message broker destinations
       bindings:
-        # OUTPUT BINDING (Publishing events)
-        # Format: <binding-name>-out-<index>
         orderEvents-out-0:
-          destination: order.events  # RabbitMQ exchange or Kafka topic
+          destination: order.events
           content-type: application/json
-          producer:
-            # Partition key for load balancing (optional)
-            # partition-key-expression: headers['orderId']
-            # partition-count: 3
         
-        # INPUT BINDING (Consuming events)
-        # Format: <function-name>-in-<index>
         inventoryEventConsumer-in-0:
-          destination: order.events  # Same exchange, different queue
+          destination: order.events
           content-type: application/json
-          group: order-service  # Consumer group for load balancing
-          consumer:
-            # Retry configuration
-            max-attempts: 3
-            back-off-initial-interval: 1000  # 1 second
-            back-off-max-interval: 10000     # 10 seconds
-            back-off-multiplier: 2.0
+          group: order-service
       
-      # RABBITMQ-SPECIFIC CONFIGURATION
       rabbit:
         bindings:
           orderEvents-out-0:
             producer:
-              # Exchange type: direct, topic, fanout, headers
               exchange-type: topic
-              routing-key-expression: headers['eventType']
-              # Dead Letter Queue configuration
-              auto-bind-dlq: true
-              dlq-ttl: 86400000  # 24 hours in milliseconds
-              dlq-dead-letter-exchange: order.events.dlq
+              routing-key-expression: '''order.created'''
           
           inventoryEventConsumer-in-0:
             consumer:
-              # Queue configuration
               auto-bind-dlq: true
               republish-to-dlq: true
-              # Prefetch count (how many messages to fetch at once)
-              prefetch: 10
-              # Transaction size
-              tx-size: 10
       
-      # RABBITMQ CONNECTION
       binders:
         rabbit:
           type: rabbit
           environment:
             spring:
               rabbitmq:
-                host: localhost
-                port: 5672
-                username: guest
-                password: guest
-                # In production, use environment variables:
-                # host: ${RABBITMQ_HOST:localhost}
-                # port: ${RABBITMQ_PORT:5672}
-                # username: ${RABBITMQ_USER:guest}
-                # password: ${RABBITMQ_PASSWORD:guest}
+                host: ${SPRING_RABBITMQ_HOST:localhost}
+                port: ${SPRING_RABBITMQ_PORT:5672}
+                username: ${SPRING_RABBITMQ_USERNAME:guest}
+                password: ${SPRING_RABBITMQ_PASSWORD:guest}
+                virtual-host: ${SPRING_RABBITMQ_VIRTUAL_HOST:/}
 
-# LOGGING CONFIGURATION
 logging:
   level:
     root: INFO
-    com.eventdriven.oms: DEBUG  # Debug level for our application
-    org.springframework.cloud.stream: DEBUG  # Debug Spring Cloud Stream
-    org.springframework.data.mongodb: DEBUG  # Debug MongoDB queries
-  pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
-    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
-  file:
-    name: logs/order-service.log
-    max-size: 10MB
-    max-history: 30
+    com.eventdriven.oms: DEBUG
+    org.springframework.cloud.stream: DEBUG
 
-# ACTUATOR CONFIGURATION
-# Provides health checks, metrics, and monitoring endpoints
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics,prometheus
-        # In production, limit exposed endpoints
+        include: health,info,metrics
   endpoint:
     health:
       show-details: always
-  health:
-    rabbit:
-      enabled: true
-    mongo:
-      enabled: true
-
-# APPLICATION-SPECIFIC PROPERTIES
-# Custom properties for your application
-app:
-  order:
-    max-items: 50
-    max-total-amount: 100000.0
-  
-# PROFILE-SPECIFIC CONFIGURATION
-# You can have different configs for different environments
-# application-dev.yml, application-prod.yml, etc.
-#
-# Activate profile:
-# - Command line: --spring.profiles.active=dev
-# - Environment variable: SPRING_PROFILES_ACTIVE=dev
-# - In application.yml: spring.profiles.active=dev
-
----
-# DEVELOPMENT PROFILE
-spring:
-  config:
-    activate:
-      on-profile: dev
-  data:
-    mongodb:
-      uri: mongodb://localhost:27017/order-db-dev
-logging:
-  level:
-    com.eventdriven.oms: DEBUG
-
----
-# PRODUCTION PROFILE
-spring:
-  config:
-    activate:
-      on-profile: prod
-  data:
-    mongodb:
-      uri: ${MONGODB_URI}
-  cloud:
-    stream:
-      binders:
-        rabbit:
-          environment:
-            spring:
-              rabbitmq:
-                host: ${RABBITMQ_HOST}
-                port: ${RABBITMQ_PORT}
-                username: ${RABBITMQ_USER}
-                password: ${RABBITMQ_PASSWORD}
-logging:
-  level:
-    com.eventdriven.oms: INFO
 
 # Made with Bob
