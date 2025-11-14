@@ -41,13 +41,28 @@ Before starting, make sure you have:
 
 ### 1.2 Create Free Cluster (5 minutes)
 
-1. You'll see "Create a deployment" page
-2. Choose **"M0 FREE"** (should be selected by default)
-3. Provider: **AWS**
-4. Region: Choose closest to you (e.g., **us-east-1** for North America)
-5. Cluster Name: `order-management` (or leave default)
-6. Click **"Create Deployment"**
-7. **WAIT 3-5 MINUTES** - Don't close the page!
+**If you have an existing MongoDB Atlas account:**
+
+1. Log in to https://cloud.mongodb.com
+2. Look at the left sidebar - click on **"Database"**
+3. You'll see your existing clusters (if any)
+4. Click the green **"+ Create"** button (top right)
+5. OR click **"Build a Database"** button
+6. Choose **"M0 FREE"** tier (should show "FREE" badge)
+7. Provider: **AWS**
+8. Region: Choose closest to you (e.g., **us-east-1** for North America)
+9. Cluster Name: `order-management` (or leave default)
+10. Click **"Create Deployment"** or **"Create Cluster"**
+11. **WAIT 3-5 MINUTES** - Don't close the page!
+
+**If you see "Create a deployment" page (new account):**
+
+1. Choose **"M0 FREE"** (should be selected by default)
+2. Provider: **AWS**
+3. Region: Choose closest to you (e.g., **us-east-1** for North America)
+4. Cluster Name: `order-management` (or leave default)
+5. Click **"Create Deployment"**
+6. **WAIT 3-5 MINUTES** - Don't close the page!
 
 ### 1.3 Create Database User (2 minutes)
 
