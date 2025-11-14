@@ -24,16 +24,14 @@
     <name>Order Management System - Parent</name>
     <description>Event-Driven Order Management System with Microservices Architecture</description>
 
-    <!-- 
+    <!--
     MODULES:
     Each module is a separate microservice. Maven builds them in order.
+    Only including modules that exist for deployment.
     -->
     <modules>
         <module>common</module>
         <module>order-service</module>
-        <module>inventory-service</module>
-        <module>notification-service</module>
-        <module>api-gateway</module>
     </modules>
 
     <properties>
