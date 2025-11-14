@@ -1,0 +1,1 @@
+web: java -Dserver.port=$PORT -jar backend/order-service/target/order-service-1.0.0.jar

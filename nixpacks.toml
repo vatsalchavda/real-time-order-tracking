@@ -1,0 +1,13 @@
+[phases.setup]
+nixPkgs = ["maven", "jdk17"]
+
+[phases.build]
+cmds = [
+  "cd backend && mvn clean install -DskipTests"
+]
+
+[phases.install]
+dependsOn = ["build"]
+
+[start]
+cmd = "java -Dserver.port=$PORT -jar backend/order-service/target/order-service-1.0.0.jar"
