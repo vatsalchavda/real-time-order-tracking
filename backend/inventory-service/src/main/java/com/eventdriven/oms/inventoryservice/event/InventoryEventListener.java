@@ -42,4 +42,3 @@ public class InventoryEventListener {
     }
 }
 
-// Made with Bob

@@ -10,4 +10,3 @@ public class InventoryServiceApplication {
     }
 }
 
-// Made with Bob

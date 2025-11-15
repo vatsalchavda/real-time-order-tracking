@@ -112,4 +112,3 @@ volumes:
   mongodb_data:
   rabbitmq_data:
 
-# Made with Bob
