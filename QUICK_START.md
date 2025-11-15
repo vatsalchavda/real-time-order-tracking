@@ -1,434 +1,428 @@
 # 🚀 Quick Start Guide
 
-## Get This Project Running in 15 Minutes
+## Complete Setup in 5 Minutes
 
-This guide will help you get the project up and running quickly for your interview preparation.
+### Prerequisites Check
+```bash
+# Check if you have everything installed
+java -version    # Should show Java 17
+mvn -version     # Should show Maven 3.x
+node --version   # Should show Node 18.x
+docker --version # Should show Docker
+```
+
+If anything is missing, see `LOCAL_DEVELOPMENT_GUIDE.md` for installation instructions.
 
 ---
 
-## Prerequisites Check
+## Step-by-Step Startup
 
-Before starting, ensure you have:
-
+### 1️⃣ Start Infrastructure (MongoDB & RabbitMQ)
 ```bash
-# Check Java version (need 17+)
-java -version
+cd ~/projects/real-time-order-tracking
 
-# Check Maven version (need 3.8+)
-mvn -version
+# Start MongoDB and RabbitMQ in background
+docker compose up -d mongodb rabbitmq
 
-# Check Docker
-docker --version
-docker-compose --version
+# Verify they're running
+docker compose ps
 
-# Check Node.js (need 18+)
-node --version
-npm --version
+# You should see:
+# mongodb    running    0.0.0.0:27017
+# rabbitmq   running    0.0.0.0:5672, 0.0.0.0:15672
 ```
 
-If any are missing, install them first.
+**Wait 30 seconds** for services to be fully ready.
 
 ---
 
-## Option 1: Docker Compose (Recommended - 5 minutes)
-
-### Step 1: Clone and Navigate
+### 2️⃣ Build All Backend Services
 ```bash
-git clone <your-repo-url>
-cd real-time-order-tracking
+# This builds all 5 services in correct order:
+# 1. common (shared library)
+# 2. order-service
+# 3. inventory-service
+# 4. notification-service
+# 5. api-gateway
+
+./build.sh
+
+# You'll see:
+# ✓ Common module built successfully
+# ✓ Order Service built successfully
+# ✓ Inventory Service built successfully
+# ✓ Notification Service built successfully
+# ✓ API Gateway built successfully
 ```
 
-### Step 2: Start Everything
-```bash
-docker-compose up -d
-```
-
-### Step 3: Wait for Services to Start (2-3 minutes)
-```bash
-# Check if services are running
-docker-compose ps
-
-# View logs
-docker-compose logs -f
-```
-
-### Step 4: Access the Application
-- **Frontend**: http://localhost:3000
-- **Order Service API**: http://localhost:8081/api/orders
-- **RabbitMQ Management**: http://localhost:15672 (guest/guest)
-- **Health Check**: http://localhost:8081/actuator/health
-
-### Step 5: Test the API
-```bash
-# Create an order
-curl -X POST http://localhost:8081/api/orders \
-  -H "Content-Type: application/json" \
-  -d '{
-    "customerId": "CUST123",
-    "customerName": "John Doe",
-    "items": [
-      {
-        "productId": "PROD001",
-        "productName": "Laptop",
-        "quantity": 1,
-        "price": 999.99
-      }
-    ],
-    "shippingAddress": "123 Main St"
-  }'
-
-# Get all orders
-curl http://localhost:8081/api/orders
-```
+**This takes 2-3 minutes** depending on your machine.
 
 ---
 
-## Option 2: Manual Setup (15 minutes)
-
-### Step 1: Start Infrastructure
-
+### 3️⃣ Start All Backend Services
 ```bash
-# Start MongoDB
-docker run -d -p 27017:27017 --name mongodb mongo:7.0
+# This starts all 4 services:
+# - Order Service (port 8081)
+# - Inventory Service (port 8082)
+# - Notification Service (port 8083)
+# - API Gateway (port 8080)
 
-# Start RabbitMQ
-docker run -d -p 5672:5672 -p 15672:15672 --name rabbitmq rabbitmq:3.12-management
+./start-dev.sh
 
-# Wait 30 seconds for services to start
+# You'll see:
+# ✓ Order Service started (PID: 12345)
+# ✓ Inventory Service started (PID: 12346)
+# ✓ Notification Service started (PID: 12347)
+# ✓ API Gateway started (PID: 12348)
 ```
 
-### Step 2: Build Backend
+**Wait 1 minute** for all services to start.
 
+---
+
+### 4️⃣ Start Frontend (New Terminal)
 ```bash
-cd backend
+# Open a NEW terminal window
+cd ~/projects/real-time-order-tracking/frontend
 
-# Build all modules (this will take 2-3 minutes first time)
-mvn clean install -DskipTests
+# Install dependencies (first time only)
+npm install
 
-# If build fails, try:
-mvn clean install -DskipTests -U
-```
+# Start React development server
+npm start
 
-### Step 3: Run Order Service
-
-```bash
-cd order-service
-mvn spring-boot:run
-
-# Wait for "Started OrderServiceApplication" message
-# Keep this terminal open
-```
-
-### Step 4: Run Inventory Service (New Terminal)
-
-```bash
-cd backend/inventory-service
-mvn spring-boot:run
-
-# Wait for "Started InventoryServiceApplication" message
-# Keep this terminal open
-```
-
-### Step 5: Test the Services
-
-```bash
-# In a new terminal
-curl http://localhost:8081/actuator/health
-curl http://localhost:8082/actuator/health
-
-# Both should return {"status":"UP"}
+# Browser will automatically open to http://localhost:3000
 ```
 
 ---
 
-## Troubleshooting
+## ✅ Verify Everything is Running
 
-### Issue: Port Already in Use
-
+### Check Services
 ```bash
-# Find process using port 8081
-lsof -i :8081
+# Check if all services are responding
+curl http://localhost:8081/actuator/health  # Order Service
+curl http://localhost:8082/actuator/health  # Inventory Service
+curl http://localhost:8083/actuator/health  # Notification Service
+curl http://localhost:8080/actuator/health  # API Gateway
+
+# All should return: {"status":"UP"}
+```
+
+### Access Points
+Open these URLs in your browser:
+
+1. **Frontend Application**
+   - http://localhost:3000
+   - Create orders, see real-time updates
+
+2. **Swagger API Documentation**
+   - http://localhost:8081/swagger-ui/index.html
+   - Interactive API testing
+
+3. **RabbitMQ Management**
+   - http://localhost:15672
+   - Username: `guest`
+   - Password: `guest`
+   - Watch messages flow through queues
+
+4. **API Gateway**
+   - http://localhost:8080/api/orders
+   - Main entry point for all requests
+
+---
+
+## 🎯 Test the Complete Workflow
+
+### 1. Create an Order (via UI)
+1. Go to http://localhost:3000
+2. Fill in the form:
+   - Customer Name: "John Doe"
+   - Product Name: "Laptop"
+   - Quantity: 1
+   - Price: 1299.99
+3. Click "Create Order"
+4. Order appears with status "PENDING"
+
+### 2. Watch Event Flow (RabbitMQ)
+1. Go to http://localhost:15672
+2. Login with guest/guest
+3. Click "Queues" tab
+4. See messages in:
+   - `order.created` queue
+   - `inventory.check.requested` queue
+
+### 3. Check Order Status
+1. Refresh the frontend
+2. Order status should change to "CONFIRMED"
+3. This happens because Inventory Service processed the event
+
+### 4. Test Status Changes
+1. Click "→ SHIPPED" button on an order
+2. Order status changes to "SHIPPED"
+3. Click "→ DELIVERED" button
+4. Order status changes to "DELIVERED"
+
+### 5. Test Delete
+1. Click the 🗑️ button on an order
+2. Confirm deletion
+3. Order is removed from the list
+
+---
+
+## 🛑 Stop Everything
+
+### Stop Backend Services
+```bash
+# Gracefully stop all backend services
+./stop-dev.sh
+
+# You'll see:
+# ✓ API Gateway stopped
+# ✓ Notification Service stopped
+# ✓ Inventory Service stopped
+# ✓ Order Service stopped
+```
+
+### Stop Frontend
+```bash
+# In the frontend terminal, press:
+Ctrl + C
+```
+
+### Stop Infrastructure (Optional)
+```bash
+# Stop MongoDB and RabbitMQ
+docker compose down
+
+# Stop and remove all data (clean slate)
+docker compose down -v
+```
+
+---
+
+## 🔄 Daily Development Workflow
+
+### Morning Startup
+```bash
+# 1. Start infrastructure
+docker compose up -d mongodb rabbitmq
+
+# 2. Start backend services
+./start-dev.sh
+
+# 3. Start frontend (new terminal)
+cd frontend && npm start
+```
+
+### Make Changes
+```bash
+# After changing backend code:
+./build.sh           # Rebuild
+./stop-dev.sh        # Stop old services
+./start-dev.sh       # Start new services
+
+# After changing frontend code:
+# React auto-reloads, no restart needed
+```
+
+### Evening Shutdown
+```bash
+# Stop backend
+./stop-dev.sh
+
+# Stop frontend (Ctrl+C in terminal)
+
+# Stop infrastructure
+docker compose down
+```
+
+---
+
+## 📊 View Logs
+
+### Backend Service Logs
+```bash
+# View logs in real-time
+tail -f logs/order-service.log
+tail -f logs/inventory-service.log
+tail -f logs/notification-service.log
+tail -f logs/api-gateway.log
+
+# View last 50 lines
+tail -n 50 logs/order-service.log
+```
+
+### Docker Logs
+```bash
+# MongoDB logs
+docker compose logs -f mongodb
+
+# RabbitMQ logs
+docker compose logs -f rabbitmq
+
+# All logs
+docker compose logs -f
+```
+
+---
+
+## 🐛 Troubleshooting
+
+### Port Already in Use
+```bash
+# Find what's using port 8081
+sudo lsof -i :8081
 
 # Kill the process
 kill -9 <PID>
 
-# Or use different ports in application.yml
+# Or change port in application.properties
 ```
 
-### Issue: MongoDB Connection Failed
-
+### Services Won't Start
 ```bash
-# Check if MongoDB is running
-docker ps | grep mongodb
+# Check if infrastructure is running
+docker compose ps
 
-# Restart MongoDB
-docker restart mongodb
+# Restart infrastructure
+docker compose restart mongodb rabbitmq
 
-# Check logs
-docker logs mongodb
+# Check logs for errors
+tail -f logs/order-service.log
 ```
 
-### Issue: RabbitMQ Connection Failed
-
+### Build Fails
 ```bash
-# Check if RabbitMQ is running
-docker ps | grep rabbitmq
+# Clean everything
+mvn clean
 
-# Restart RabbitMQ
-docker restart rabbitmq
-
-# Access management UI
-open http://localhost:15672
-```
-
-### Issue: Maven Build Fails
-
-```bash
-# Clear Maven cache
+# Delete Maven cache (nuclear option)
 rm -rf ~/.m2/repository
 
 # Rebuild
-mvn clean install -U -DskipTests
+./build.sh
 ```
 
-### Issue: "Cannot find symbol" Errors
-
+### Frontend Won't Start
 ```bash
-# Lombok not working - install Lombok plugin in your IDE
-# IntelliJ: Settings → Plugins → Search "Lombok" → Install
-# Eclipse: Download lombok.jar and run it
+# Clear npm cache
+npm cache clean --force
 
-# Enable annotation processing
-# IntelliJ: Settings → Build → Compiler → Annotation Processors → Enable
+# Delete node_modules
+rm -rf node_modules package-lock.json
+
+# Reinstall
+npm install
+
+# Start
+npm start
 ```
 
 ---
 
-## Verify Everything Works
+## 🎓 Interview Demo Workflow
 
-### 1. Check Services are Running
-
+### Preparation (Before Interview)
 ```bash
-# Order Service
-curl http://localhost:8081/actuator/health
+# 1. Start everything
+docker compose up -d mongodb rabbitmq
+./start-dev.sh
+cd frontend && npm start
 
-# Inventory Service  
-curl http://localhost:8082/actuator/health
-
-# RabbitMQ
-open http://localhost:15672
+# 2. Create 2-3 sample orders
+# 3. Test status changes
+# 4. Open Swagger UI
+# 5. Open RabbitMQ UI
 ```
 
-### 2. Create a Test Order
+### During Interview
+1. **Show Architecture** (2 min)
+   - Explain microservices
+   - Show docker-compose.yml
+   - Explain event-driven communication
+
+2. **Demo UI** (2 min)
+   - Create order
+   - Show status changes
+   - Delete order
+
+3. **Show Swagger** (2 min)
+   - Open http://localhost:8081/swagger-ui/index.html
+   - Test endpoints
+   - Show API documentation
+
+4. **Show Event Flow** (2 min)
+   - Open RabbitMQ UI
+   - Create order
+   - Watch messages flow
+
+5. **Show Code** (5 min)
+   - OrderController.java
+   - OrderService.java
+   - Event publishing/consuming
+
+6. **Live Coding** (5 min)
+   - Add new endpoint
+   - Rebuild and test
+   - Show it works
+
+---
+
+## 📝 Useful Commands Cheat Sheet
 
 ```bash
-curl -X POST http://localhost:8081/api/orders \
-  -H "Content-Type: application/json" \
-  -d '{
-    "customerId": "TEST123",
-    "customerName": "Test User",
-    "items": [
-      {
-        "productId": "PROD001",
-        "productName": "Test Product",
-        "quantity": 1,
-        "price": 99.99
-      }
-    ],
-    "shippingAddress": "123 Test St"
-  }'
-```
+# Build
+./build.sh                    # Build all services
+./test.sh                     # Run all tests
 
-### 3. Check RabbitMQ for Events
+# Start/Stop
+./start-dev.sh                # Start all backend services
+./stop-dev.sh                 # Stop all backend services
+docker compose up -d          # Start infrastructure
+docker compose down           # Stop infrastructure
 
-1. Open http://localhost:15672
-2. Login with guest/guest
-3. Go to "Queues" tab
-4. You should see queues with messages
+# Logs
+tail -f logs/order-service.log           # View logs
+docker compose logs -f mongodb           # Docker logs
 
-### 4. Check MongoDB for Data
+# Testing
+curl http://localhost:8080/api/orders    # Test API
+curl http://localhost:8081/actuator/health  # Health check
 
-```bash
-# Connect to MongoDB
-docker exec -it mongodb mongosh
+# Git
+git status                    # Check changes
+git add -A                    # Stage all changes
+git commit -m "message"       # Commit
+git push origin main          # Push to GitHub
 
-# Switch to order-db
-use order-db
+# MongoDB
+docker exec -it mongodb mongosh          # Connect to MongoDB
+use orderdb                              # Switch database
+db.orders.find().pretty()                # View orders
 
-# View orders
-db.orders.find().pretty()
-
-# Exit
-exit
+# Cleanup
+docker compose down -v        # Remove all data
+rm -rf logs/*                 # Clear logs
 ```
 
 ---
 
-## Next Steps
+## 🎉 You're All Set!
 
-### For Interview Preparation
+Your system is now running with:
+- ✅ 4 Backend microservices
+- ✅ React frontend
+- ✅ MongoDB database
+- ✅ RabbitMQ message broker
+- ✅ Swagger API documentation
+- ✅ Complete event-driven workflow
 
-1. **Read the Documentation**
-   - [SpringBoot Concepts Guide](docs/SPRINGBOOT_CONCEPTS.md)
-   - [Interview Walkthrough](docs/INTERVIEW_WALKTHROUGH.md)
-
-2. **Understand the Code Flow**
-   - Start with `OrderController.java`
-   - Follow the flow: Controller → Service → Repository
-   - Understand event publishing and consuming
-
-3. **Practice Explaining**
-   - Architecture diagram
-   - Event flow (Saga pattern)
-   - Why you chose each technology
-   - Trade-offs and decisions
-
-4. **Prepare Demo**
-   - Have the application running
-   - Know how to create an order via API
-   - Show RabbitMQ management UI
-   - Explain the event flow
-
-### For Development
-
-1. **Add More Features**
-   - Payment service
-   - Shipping service
-   - User authentication
-   - Order cancellation
-
-2. **Improve Code**
-   - Add more tests
-   - Implement caching
-   - Add API documentation (Swagger)
-   - Implement circuit breakers
-
-3. **Deploy**
-   - Deploy to cloud (AWS, Azure, GCP)
-   - Set up CI/CD pipeline
-   - Add monitoring (Prometheus, Grafana)
-   - Implement logging (ELK stack)
+**Next:** Practice the demo workflow 10 times before your interview!
 
 ---
 
-## Common Commands
+**Need Help?** Check `LOCAL_DEVELOPMENT_GUIDE.md` for detailed explanations.
 
-### Docker Compose
-
-```bash
-# Start all services
-docker-compose up -d
-
-# Stop all services
-docker-compose down
-
-# View logs
-docker-compose logs -f
-
-# Restart a service
-docker-compose restart order-service
-
-# Rebuild and start
-docker-compose up -d --build
-```
-
-### Maven
-
-```bash
-# Build without tests
-mvn clean install -DskipTests
-
-# Run tests
-mvn test
-
-# Run specific service
-cd order-service && mvn spring-boot:run
-
-# Package as JAR
-mvn clean package
-```
-
-### MongoDB
-
-```bash
-# Connect to MongoDB
-docker exec -it mongodb mongosh
-
-# List databases
-show dbs
-
-# Use database
-use order-db
-
-# List collections
-show collections
-
-# Query orders
-db.orders.find().pretty()
-
-# Count orders
-db.orders.count()
-```
-
-### RabbitMQ
-
-```bash
-# List queues
-docker exec rabbitmq rabbitmqctl list_queues
-
-# List exchanges
-docker exec rabbitmq rabbitmqctl list_exchanges
-
-# Purge queue
-docker exec rabbitmq rabbitmqctl purge_queue <queue-name>
-```
-
----
-
-## Interview Day Checklist
-
-- [ ] Application is running and tested
-- [ ] Can explain architecture in 2 minutes
-- [ ] Can walk through code flow
-- [ ] Can demonstrate event flow
-- [ ] Know why you chose each technology
-- [ ] Can discuss trade-offs
-- [ ] Have RabbitMQ management UI ready
-- [ ] Can create an order via API
-- [ ] Understand Saga pattern
-- [ ] Can explain how to scale the system
-
----
-
-## Getting Help
-
-If you're stuck:
-
-1. Check the [SpringBoot Concepts Guide](docs/SPRINGBOOT_CONCEPTS.md)
-2. Check the [Interview Walkthrough](docs/INTERVIEW_WALKTHROUGH.md)
-3. Review the code comments (they explain everything!)
-4. Check Spring Boot documentation
-5. Google the error message
-
----
-
-## Success Criteria
-
-You're ready when you can:
-
-✅ Start the application without errors  
-✅ Create an order via API  
-✅ See events in RabbitMQ  
-✅ Explain the architecture  
-✅ Walk through the code  
-✅ Discuss design decisions  
-✅ Answer "Why SpringBoot over Express?"  
-✅ Explain the Saga pattern  
-✅ Discuss scalability  
-✅ Show enthusiasm for the technology  
-
----
-
-**Good luck with your interview! 🚀**
-
-Remember: The interviewers want to see that you understand the concepts, can explain your decisions, and are eager to learn. Be confident and enthusiastic!
+**Author:** Vatsal Chavda  
+**Email:** vatsalchavda2@gmail.com
