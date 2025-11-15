@@ -72,16 +72,65 @@ function App() {
     }
   }
 
+  const deleteOrder = async (orderId: string) => {
+    if (!window.confirm('Are you sure you want to delete this order?')) {
+      return
+    }
+
+    try {
+      const response = await fetch(`${API_URL}/orders/${orderId}`, {
+        method: 'DELETE',
+      })
+
+      if (response.ok) {
+        fetchOrders()
+      }
+    } catch (error) {
+      console.error('Error deleting order:', error)
+    }
+  }
+
+  const updateOrderStatus = async (orderId: string, newStatus: string) => {
+    try {
+      const response = await fetch(`${API_URL}/orders/${orderId}/status?status=${newStatus}`, {
+        method: 'PATCH',
+      })
+
+      if (response.ok) {
+        fetchOrders()
+      }
+    } catch (error) {
+      console.error('Error updating order status:', error)
+    }
+  }
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'PENDING':
         return 'bg-warning text-dark'
       case 'CONFIRMED':
         return 'bg-success text-white'
+      case 'SHIPPED':
+        return 'bg-info text-white'
+      case 'DELIVERED':
+        return 'bg-primary text-white'
       case 'CANCELLED':
         return 'bg-danger text-white'
       default:
         return 'bg-secondary text-white'
+    }
+  }
+
+  const getNextStatus = (currentStatus: string): string | null => {
+    switch (currentStatus) {
+      case 'PENDING':
+        return 'CONFIRMED'
+      case 'CONFIRMED':
+        return 'SHIPPED'
+      case 'SHIPPED':
+        return 'DELIVERED'
+      default:
+        return null
     }
   }
 
@@ -193,7 +242,7 @@ function App() {
                       {orders.map((order) => (
                         <div
                           key={order.orderId}
-                          className="list-group-item list-group-item-action mb-2"
+                          className="list-group-item mb-2"
                         >
                           <div className="d-flex w-100 justify-content-between align-items-start mb-2">
                             <div>
@@ -206,13 +255,47 @@ function App() {
                               {order.status}
                             </span>
                           </div>
-                          <div className="d-flex w-100 justify-content-between">
+                          <div className="d-flex w-100 justify-content-between align-items-center mb-2">
                             <strong className="text-success">
                               ${order.totalAmount.toFixed(2)}
                             </strong>
                             <small className="text-muted">
                               {new Date(order.createdAt).toLocaleDateString()}
                             </small>
+                          </div>
+                          
+                          {/* Action Buttons */}
+                          <div className="d-flex gap-2 mt-2">
+                            {/* Next Status Button */}
+                            {getNextStatus(order.status) && (
+                              <button
+                                onClick={() => updateOrderStatus(order.orderId, getNextStatus(order.status)!)}
+                                className="btn btn-sm btn-primary flex-grow-1"
+                                title={`Change status to ${getNextStatus(order.status)}`}
+                              >
+                                → {getNextStatus(order.status)}
+                              </button>
+                            )}
+                            
+                            {/* Cancel Button (only for PENDING/CONFIRMED) */}
+                            {(order.status === 'PENDING' || order.status === 'CONFIRMED') && (
+                              <button
+                                onClick={() => updateOrderStatus(order.orderId, 'CANCELLED')}
+                                className="btn btn-sm btn-warning"
+                                title="Cancel order"
+                              >
+                                Cancel
+                              </button>
+                            )}
+                            
+                            {/* Delete Button */}
+                            <button
+                              onClick={() => deleteOrder(order.orderId)}
+                              className="btn btn-sm btn-danger"
+                              title="Delete order"
+                            >
+                              🗑️
+                            </button>
                           </div>
                         </div>
                       ))}

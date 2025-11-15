@@ -1,7 +1,15 @@
 package com.eventdriven.oms.orderservice.controller;
 
 import com.eventdriven.oms.common.dto.OrderDTO;
+import com.eventdriven.oms.common.enums.OrderStatus;
 import com.eventdriven.oms.orderservice.service.OrderService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -70,6 +78,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @Slf4j
 @CrossOrigin(origins = "*")  // Allow requests from any origin (for development)
+@Tag(name = "Order Management", description = "APIs for managing orders in the system")
 public class OrderController {
     
     private final OrderService orderService;
@@ -122,7 +131,19 @@ public class OrderController {
      * }
      */
     @PostMapping
-    public ResponseEntity<OrderDTO> createOrder(@Valid @RequestBody OrderDTO orderDTO) {
+    @Operation(
+        summary = "Create a new order",
+        description = "Creates a new order and publishes an OrderCreated event to RabbitMQ for downstream processing"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "202", description = "Order accepted for processing",
+                    content = @Content(schema = @Schema(implementation = OrderDTO.class))),
+        @ApiResponse(responseCode = "400", description = "Invalid input data"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
+    public ResponseEntity<OrderDTO> createOrder(
+            @Parameter(description = "Order details", required = true)
+            @Valid @RequestBody OrderDTO orderDTO) {
         log.info("Received request to create order for customer: {}", orderDTO.getCustomerId());
         
         OrderDTO createdOrder = orderService.createOrder(orderDTO);
@@ -159,7 +180,19 @@ public class OrderController {
      * -> id = "abc-123"
      */
     @GetMapping("/{id}")
-    public ResponseEntity<OrderDTO> getOrderById(@PathVariable String id) {
+    @Operation(
+        summary = "Get order by ID",
+        description = "Retrieves a specific order by its unique identifier"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Order found",
+                    content = @Content(schema = @Schema(implementation = OrderDTO.class))),
+        @ApiResponse(responseCode = "404", description = "Order not found"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
+    public ResponseEntity<OrderDTO> getOrderById(
+            @Parameter(description = "Order ID", required = true, example = "507f1f77bcf86cd799439011")
+            @PathVariable String id) {
         log.info("Received request to get order: {}", id);
         
         OrderDTO order = orderService.getOrderById(id);
@@ -186,6 +219,14 @@ public class OrderController {
      * }
      */
     @GetMapping
+    @Operation(
+        summary = "Get all orders",
+        description = "Retrieves a list of all orders in the system"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Orders retrieved successfully"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
     public ResponseEntity<List<OrderDTO>> getAllOrders() {
         log.info("Received request to get all orders");
         
@@ -207,12 +248,103 @@ public class OrderController {
      * Use @RequestParam for filtering, sorting, pagination
      */
     @GetMapping("/customer/{customerId}")
-    public ResponseEntity<List<OrderDTO>> getOrdersByCustomer(@PathVariable String customerId) {
+    @Operation(
+        summary = "Get orders by customer",
+        description = "Retrieves all orders for a specific customer"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Orders retrieved successfully"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
+    public ResponseEntity<List<OrderDTO>> getOrdersByCustomer(
+            @Parameter(description = "Customer ID", required = true, example = "CUST123")
+            @PathVariable String customerId) {
         log.info("Received request to get orders for customer: {}", customerId);
         
         List<OrderDTO> orders = orderService.getOrdersByCustomer(customerId);
         
         return ResponseEntity.ok(orders);
+    }
+    
+    /**
+     * UPDATE ORDER STATUS
+     *
+     * PATCH /api/orders/{id}/status?status=CONFIRMED
+     *
+     * @PatchMapping - Handles HTTP PATCH requests
+     * - Used for partial updates
+     * - Only updates specific fields (status in this case)
+     *
+     * @RequestParam - Binds query parameter to method parameter
+     * - ?status=CONFIRMED maps to OrderStatus status parameter
+     * - Spring automatically converts String to Enum
+     *
+     * This endpoint is useful for:
+     * - Manual status changes during demo
+     * - Admin operations
+     * - Testing event flow
+     */
+    @PatchMapping("/{id}/status")
+    @Operation(
+        summary = "Update order status",
+        description = "Updates the status of an existing order. Useful for manual status changes and testing."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Order status updated successfully",
+                    content = @Content(schema = @Schema(implementation = OrderDTO.class))),
+        @ApiResponse(responseCode = "404", description = "Order not found"),
+        @ApiResponse(responseCode = "400", description = "Invalid status value"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
+    public ResponseEntity<OrderDTO> updateOrderStatus(
+            @Parameter(description = "Order ID", required = true, example = "507f1f77bcf86cd799439011")
+            @PathVariable String id,
+            @Parameter(description = "New order status", required = true, example = "CONFIRMED")
+            @RequestParam OrderStatus status) {
+        log.info("Received request to update order {} status to {}", id, status);
+        
+        OrderDTO updatedOrder = orderService.updateOrderStatus(id, status);
+        
+        return ResponseEntity.ok(updatedOrder);
+    }
+    
+    /**
+     * DELETE ORDER
+     *
+     * DELETE /api/orders/{id}
+     *
+     * @DeleteMapping - Handles HTTP DELETE requests
+     * - Used for deleting resources
+     * - Should be idempotent (deleting twice has same effect as once)
+     *
+     * Returns 204 No Content on success
+     * - Indicates successful deletion
+     * - No response body needed
+     *
+     * In production, consider:
+     * - Soft delete (mark as deleted, don't actually remove)
+     * - Audit trail (who deleted, when)
+     * - Cascade delete (related records)
+     * - Authorization (who can delete)
+     */
+    @DeleteMapping("/{id}")
+    @Operation(
+        summary = "Delete an order",
+        description = "Deletes an order from the system. Use with caution in production."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "204", description = "Order deleted successfully"),
+        @ApiResponse(responseCode = "404", description = "Order not found"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
+    public ResponseEntity<Void> deleteOrder(
+            @Parameter(description = "Order ID", required = true, example = "507f1f77bcf86cd799439011")
+            @PathVariable String id) {
+        log.info("Received request to delete order: {}", id);
+        
+        orderService.deleteOrder(id);
+        
+        return ResponseEntity.noContent().build();  // HTTP 204 No Content
     }
     
     /**

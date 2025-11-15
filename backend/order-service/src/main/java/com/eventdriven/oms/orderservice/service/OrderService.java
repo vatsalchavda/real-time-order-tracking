@@ -204,6 +204,88 @@ public class OrderService {
     }
     
     /**
+     * UPDATE ORDER STATUS
+     *
+     * Manually update order status. Useful for:
+     * - Demo purposes (showing status transitions)
+     * - Admin operations
+     * - Testing event flow
+     * - Compensating transactions
+     */
+    @Transactional
+    public OrderDTO updateOrderStatus(String orderId, OrderStatus newStatus) {
+        log.info("Updating order {} status to {}", orderId, newStatus);
+        
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found: " + orderId));
+        
+        OrderStatus oldStatus = order.getStatus();
+        order.updateStatus(newStatus);
+        orderRepository.save(order);
+        
+        log.info("Order {} status updated from {} to {}", orderId, oldStatus, newStatus);
+        
+        // Publish appropriate event based on new status
+        OrderDTO orderDTO = mapToDTO(order);
+        switch (newStatus) {
+            case CONFIRMED:
+                eventPublisher.publishOrderConfirmed(orderDTO);
+                break;
+            case CANCELLED:
+                eventPublisher.publishOrderCancelled(orderDTO, "Manual cancellation");
+                break;
+            case SHIPPED:
+                // Could publish OrderShipped event here
+                break;
+            case DELIVERED:
+                // Could publish OrderDelivered event here
+                break;
+            default:
+                // No event for other statuses
+                break;
+        }
+        
+        return orderDTO;
+    }
+    
+    /**
+     * DELETE ORDER
+     *
+     * Permanently removes an order from the database.
+     *
+     * IMPORTANT CONSIDERATIONS:
+     * 1. In production, prefer soft delete (mark as deleted, don't remove)
+     * 2. Check if order can be deleted (e.g., not if already shipped)
+     * 3. Consider cascade delete for related records
+     * 4. Maintain audit trail
+     * 5. Publish OrderDeleted event for downstream services
+     *
+     * Soft Delete Example:
+     * order.setDeleted(true);
+     * order.setDeletedAt(LocalDateTime.now());
+     * orderRepository.save(order);
+     */
+    @Transactional
+    public void deleteOrder(String orderId) {
+        log.info("Deleting order: {}", orderId);
+        
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found: " + orderId));
+        
+        // In production, add business rules:
+        // if (order.getStatus() == OrderStatus.SHIPPED) {
+        //     throw new IllegalStateException("Cannot delete shipped orders");
+        // }
+        
+        orderRepository.deleteById(orderId);
+        
+        log.info("Order deleted: {}", orderId);
+        
+        // Could publish OrderDeleted event here for downstream services
+        // eventPublisher.publishOrderDeleted(mapToDTO(order));
+    }
+    
+    /**
      * MAPPER METHODS
      * 
      * These convert between Entity (database) and DTO (API).
