@@ -117,5 +117,3 @@ echo "=========================================="
 print_success "All tests passed!"
 echo "=========================================="
 echo ""
-
-# Made with Bob

@@ -137,5 +137,3 @@ echo "  1. Start infrastructure: docker compose up -d mongodb rabbitmq"
 echo "  2. Start services: ./start-dev.sh"
 echo "  3. Start frontend: cd frontend && npm start"
 echo ""
-
-# Made with Bob

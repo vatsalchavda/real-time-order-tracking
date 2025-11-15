@@ -83,5 +83,3 @@ echo ""
 echo "To stop infrastructure and remove volumes:"
 echo "  docker compose down -v"
 echo ""
-
-# Made with Bob

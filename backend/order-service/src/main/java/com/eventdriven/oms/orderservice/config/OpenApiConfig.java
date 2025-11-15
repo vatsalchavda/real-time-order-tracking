@@ -71,5 +71,3 @@ public class OpenApiConfig {
                 ));
     }
 }
-
-// Made with Bob

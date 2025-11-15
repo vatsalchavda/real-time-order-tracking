@@ -187,5 +187,3 @@ echo ""
 echo "Next step:"
 echo "  cd frontend && npm start"
 echo ""
-
-# Made with Bob
