@@ -201,6 +201,7 @@ sequenceDiagram
    - Order Service: http://localhost:8081
    - Inventory Service: http://localhost:8082
    - RabbitMQ Management: http://localhost:15672 (guest/guest)
+   - Mongo Express (MongoDB GUI): http://localhost:8888 (admin/admin123)
 
 ### Manual Setup (Development)
 
@@ -537,6 +538,7 @@ kubectl get services
 - Order Service: http://localhost:8081/actuator/health
 - Inventory Service: http://localhost:8082/actuator/health
 - RabbitMQ: http://localhost:15672
+- MongoDB GUI (Mongo Express): http://localhost:8888 (admin/admin123)
 
 ### Metrics
 
