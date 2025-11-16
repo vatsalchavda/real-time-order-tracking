@@ -18,6 +18,7 @@ A production-ready, event-driven microservices architecture demonstrating modern
 - [Getting Started](#getting-started)
 - [Project Structure](#project-structure)
 - [API Documentation](#api-documentation)
+- [Service-Specific API Usage](#service-specific-api-usage)
 - [Event Flow](#event-flow)
 - [Design Patterns](#design-patterns)
 - [Documentation](#documentation)
@@ -217,16 +218,8 @@ docker run -d -p 5672:5672 -p 15672:15672 --name rabbitmq rabbitmq:3.12-manageme
 
 ```bash
 cd backend
-
-# Build all modules
-mvn clean install
-
-# Run Order Service
 cd order-service
 mvn spring-boot:run
-
-# Run Inventory Service (in new terminal)
-cd inventory-service
 mvn spring-boot:run
 ```
 
@@ -350,6 +343,44 @@ Response: 200 OK
   }
 ]
 ```
+
+### Service-Specific API Usage
+
+#### Order Service ([http://localhost:8081](http://localhost:8081))
+
+- **Get all orders**
+  ```http
+  GET /api/orders
+  ```
+- **Get order by ID**
+  ```http
+  GET /api/orders/{orderId}
+  ```
+- **Create order**
+  ```http
+  POST /api/orders
+  Content-Type: application/json
+  {
+    "customerId": "CUST123",
+    "customerName": "John Doe",
+    "items": [
+      { "productId": "PROD001", "productName": "Laptop", "quantity": 1, "price": 999.99 }
+    ],
+    "shippingAddress": "123 Main St"
+  }
+  ```
+- **Get orders by customer**
+  ```http
+  GET /api/orders/customer/{customerId}
+  ```
+
+#### Inventory Service ([http://localhost:8082](http://localhost:8082))
+
+- **Health check**
+  ```http
+  GET /actuator/health
+  ```
+- _Note: Inventory API endpoints (e.g., `/api/inventory`) are not yet implemented and will return 404._
 
 ### Full API Documentation
 

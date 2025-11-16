@@ -15,8 +15,8 @@ WORKDIR /app
 # Copy the built jar
 COPY --from=build /app/target/*.jar app.jar
 
-# Expose port
-EXPOSE 8080
+# Expose port (changed to 8081 to match docker-compose and frontend)
+EXPOSE 8081
 
-# Run the application
-CMD ["java", "-Dserver.port=${PORT:-8080}", "-jar", "app.jar"]
+# Run the application (default to 8081)
+CMD ["java", "-Dserver.port=${PORT:-8081}", "-jar", "app.jar"]
