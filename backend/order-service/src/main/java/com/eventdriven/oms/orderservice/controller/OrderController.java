@@ -141,7 +141,7 @@ public class OrderController {
         @ApiResponse(responseCode = "400", description = "Invalid input data"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
     })
-    public ResponseEntity<OrderDTO> createOrder(
+        public ResponseEntity<OrderDTO> createOrder(
             @Parameter(description = "Order details", required = true)
             @Valid @RequestBody OrderDTO orderDTO) {
         log.info("Received request to create order for customer: {}", orderDTO.getCustomerId());
@@ -158,10 +158,15 @@ public class OrderController {
          * - Follows REST best practices for async operations
          * - Sets proper expectations for eventual consistency
          */
+        // Add a simple request-correlation id for tracing across services
+        String requestId = java.util.UUID.randomUUID().toString();
+        log.info("Order created (requestId={}): orderId={}", requestId, createdOrder.getOrderId());
+
         return ResponseEntity
-                .status(HttpStatus.ACCEPTED)
-                .body(createdOrder);
-    }
+            .status(HttpStatus.ACCEPTED)
+            .header("X-Request-Id", requestId)
+            .body(createdOrder);
+        }
     
     /**
      * GET ORDER BY ID
