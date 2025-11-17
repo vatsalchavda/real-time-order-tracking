@@ -45,20 +45,22 @@ Built to demonstrate enterprise-grade software engineering practices and modern 
 ### System Architecture (runtime)
 
 ```mermaid
-flowchart LR
+%%{init: {"themeVariables": {"fontSize": "16px", "nodePadding": "16", "clusterBkg": "#f9f9f9"}}}%%
+flowchart TB
+   %% Top-down layout for better readability on narrow screens
    Frontend["Frontend (React)\nport 3000"]
    Order["Order Service\ncontainer: oms-order-service\nport: 8081"]
    Inventory["Inventory Service\ncontainer: oms-inventory-service\nport: 8082"]
-   Rabbit["RabbitMQ\ncontainer: oms-rabbitmq\nports: 5672/15672"]
+   Rabbit["RabbitMQ\ncontainer: oms-rabbitmq\nports: 5672 / 15672"]
+   RabbitMgmt["RabbitMQ Management\nport: 15672"]
    Mongo["MongoDB\ncontainer: oms-mongodb\nport: 27017\n(databases: order-db, inventory-db)"]
    MongoExpress["Mongo Express\ncontainer: oms-mongo-express\nport: 8888"]
-   RabbitMgmt["RabbitMQ Management\nport: 15672"]
 
    Frontend -->|HTTP REST| Order
    Order -->|Publish events| Rabbit
    Rabbit -->|Deliver events| Inventory
-   Order -->|Reads/Writes| Mongo
-   Inventory -->|Reads/Writes| Mongo
+   Order -->|Reads / Writes| Mongo
+   Inventory -->|Reads / Writes| Mongo
    Mongo --> MongoExpress
    Rabbit --> RabbitMgmt
 
@@ -455,6 +457,7 @@ sequenceDiagram
 This sequence shows the choreography-based Saga: the Order Service publishes events and the Inventory Service reacts. The frontend updates its view by polling or auto-refreshing; a Notification Service / WebSocket push is a future enhancement.
 
 - Mermaid source: `docs/diagrams/event-flow.mmd`
+- Architecture source: `docs/diagrams/architecture.mmd`
 - To generate an SVG fallback locally (requires Node.js >= 20 and mermaid-cli):
 
 ```bash

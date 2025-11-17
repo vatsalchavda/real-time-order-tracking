@@ -1,0 +1,55 @@
+name: Render Mermaid Diagrams
+
+on:
+  push:
+    paths:
+      - 'docs/diagrams/**.mmd'
+      - '.github/workflows/render-mermaid.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  render:
+    name: Render Mermaid (.mmd → .svg)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install mermaid-cli
+        run: npm install -g @mermaid-js/mermaid-cli
+
+      - name: Render all .mmd files to SVG
+        run: |
+          mkdir -p docs/diagrams
+          set -e
+          for f in docs/diagrams/*.mmd; do
+            [ -f "$f" ] || continue
+            out="${f%.mmd}.svg"
+            echo "Rendering $f -> $out"
+            mmdc -i "$f" -o "$out" -s 2 || (echo "Rendering failed for $f" && exit 1)
+          done
+
+      - name: Commit rendered SVGs
+        env:
+          GIT_AUTHOR_NAME: github-actions[bot]
+          GIT_AUTHOR_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+        run: |
+          git config user.name "$GIT_AUTHOR_NAME"
+          git config user.email "$GIT_AUTHOR_EMAIL"
+          git add docs/diagrams/*.svg || true
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "chore(docs): render mermaid diagrams to SVG [skip ci]" || true
+            git push origin HEAD:${{ github.ref_name }} || true
+          fi
