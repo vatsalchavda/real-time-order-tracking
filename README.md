@@ -42,66 +42,41 @@ Built to demonstrate enterprise-grade software engineering practices and modern 
 
 ## 🏗️ Architecture
 
-### System Architecture
+### System Architecture (runtime)
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                     Frontend (React)                         │
-│                  Real-time Dashboard                         │
-└──────────────────────────┬──────────────────────────────────┘
-                           │ REST API
-                           ↓
-        ┌──────────────────┬──────────────────┐
-        ↓                  ↓                  ↓
-┌──────────────┐  ┌──────────────┐  ┌──────────────┐
-│Order Service │  │Inventory Svc │  │   Common     │
-│   (8081)     │  │   (8082)     │  │   (Shared)   │
-└──────┬───────┘  └──────┬───────┘  └──────────────┘
-       │                 │
-       └─────────────────┼─────────────────┐
-                         ↓
-              ┌──────────────────┐
-              │    RabbitMQ      │
-              │  Message Broker  │
-              │  (Async Events)  │
-              └──────────────────┘
-                         ↓
-        ┌────────────────┴────────────────┐
-        ↓                                 ↓
-┌──────────────┐                  ┌──────────────┐
-│  MongoDB     │                  │  MongoDB     │
-│  order-db    │                  │inventory-db  │
-└──────────────┘                  └──────────────┘
+```mermaid
+flowchart LR
+   Frontend["Frontend (React)\nport 3000"]
+   Order["Order Service\ncontainer: oms-order-service\nport: 8081"]
+   Inventory["Inventory Service\ncontainer: oms-inventory-service\nport: 8082"]
+   Rabbit["RabbitMQ\ncontainer: oms-rabbitmq\nports: 5672/15672"]
+   Mongo["MongoDB\ncontainer: oms-mongodb\nport: 27017\n(databases: order-db, inventory-db)"]
+   MongoExpress["Mongo Express\ncontainer: oms-mongo-express\nport: 8888"]
+   RabbitMgmt["RabbitMQ Management\nport: 15672"]
+
+   Frontend -->|HTTP REST| Order
+   Order -->|Publish events| Rabbit
+   Rabbit -->|Deliver events| Inventory
+   Order -->|Reads/Writes| Mongo
+   Inventory -->|Reads/Writes| Mongo
+   Mongo --> MongoExpress
+   Rabbit --> RabbitMgmt
+
+   subgraph CodeModules["Code (not containers)"]
+      Common["common module\n(shared library) - not a running service"]
+   end
+   Common -.-> Order
+   Common -.-> Inventory
 ```
 
-### Event Flow (Saga Pattern)
+Notes:
 
-```
-Frontend (React)
-    ↓
-    ├─→ POST /api/orders
-    │
-Order Service creates order (PENDING)
-    ├─→ Publish: ORDER_CREATED
-    ├─→ Publish: INVENTORY_CHECK_REQUESTED
-    ├─→ Return: 202 Accepted
-    │
-RabbitMQ
-    ├─→ Route to Inventory Service
-    │
-Inventory Service
-    ├─→ Check stock
-    ├─→ If available: Publish INVENTORY_RESERVED
-    ├─→ If insufficient: Publish INVENTORY_INSUFFICIENT
-    │
-Order Service (receives event)
-    ├─→ Update order status
-    ├─→ If CONFIRMED: Notification ready (frontend polls)
-    ├─→ If CANCELLED: Notification ready (frontend polls)
-    │
-Frontend (React)
-    └─→ Auto-refresh to show status
-```
+- `common` is a shared code module (library), not a running service/container.
+- There is a single MongoDB instance; services use separate logical databases (`order-db`, `inventory-db`).
+- The project currently does NOT run an API Gateway or Notification Service — these are listed as "Future Enhancements" and are not started by `docker-compose.yml`.
+- Frontend currently polls/auto-refreshes for status updates (no WebSocket push server is deployed).
+- RabbitMQ uses exchanges/queues and bindings; events published by Order Service are routed to consumers (e.g., Inventory Service) based on bindings configured in each service's `application.yml`.
+
 
 ## ✨ Features
 
@@ -449,12 +424,46 @@ Response: 200 OK
 
 ### How Events Work in This System
 
-1. **Order Service** publishes ORDER_CREATED and INVENTORY_CHECK_REQUESTED events
-2. **RabbitMQ** routes events to subscribed services based on bindings
-3. **Inventory Service** receives event and checks stock availability
-4. **Inventory Service** publishes INVENTORY_RESERVED or INVENTORY_INSUFFICIENT
-5. **Order Service** listens to these events and updates order status
-6. **Frontend** polls for changes and displays updated status
+```mermaid
+sequenceDiagram
+   participant UI as Frontend
+   participant OS as Order Service
+   participant MQ as RabbitMQ
+   participant IS as Inventory Service
+
+   UI->>OS: POST /api/orders (create order)
+   OS->>OS: Save order (PENDING)
+   OS->>MQ: ORDER_CREATED
+   OS->>MQ: INVENTORY_CHECK_REQUESTED
+
+   MQ->>IS: INVENTORY_CHECK_REQUESTED
+   IS->>IS: Check stock
+
+   alt Stock available
+      IS->>MQ: INVENTORY_RESERVED
+      MQ->>OS: INVENTORY_RESERVED
+      OS->>OS: Update order (CONFIRMED)
+   else Stock insufficient
+      IS->>MQ: INVENTORY_INSUFFICIENT
+      MQ->>OS: INVENTORY_INSUFFICIENT
+      OS->>OS: Update order (CANCELLED)
+   end
+
+   Note over OS,UI: Frontend polls for status updates (no WebSocket deployed)
+```
+
+This sequence shows the choreography-based Saga: the Order Service publishes events and the Inventory Service reacts. The frontend updates its view by polling or auto-refreshing; a Notification Service / WebSocket push is a future enhancement.
+
+- Mermaid source: `docs/diagrams/event-flow.mmd`
+- To generate an SVG fallback locally (requires Node.js >= 20 and mermaid-cli):
+
+```bash
+# using npx (downloads mermaid-cli temporarily)
+# or install globally: npm install -g @mermaid-js/mermaid-cli
+npx @mermaid-js/mermaid-cli -i docs/diagrams/event-flow.mmd -o docs/diagrams/event-flow.svg
+```
+
+If you want, I can add the generated SVG to the repo (I attempted generation here but the environment's Node version prevented a successful build).
 
 ## 🎨 Design Patterns
 

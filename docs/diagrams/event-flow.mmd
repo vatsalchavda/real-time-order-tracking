@@ -1,0 +1,25 @@
+sequenceDiagram
+    participant UI as Frontend
+    participant OS as Order Service
+    participant MQ as RabbitMQ
+    participant IS as Inventory Service
+
+    UI->>OS: POST /api/orders (create order)
+    OS->>OS: Save order (PENDING)
+    OS->>MQ: ORDER_CREATED
+    OS->>MQ: INVENTORY_CHECK_REQUESTED
+
+    MQ->>IS: INVENTORY_CHECK_REQUESTED
+    IS->>IS: Check stock
+
+    alt Stock available
+        IS->>MQ: INVENTORY_RESERVED
+        MQ->>OS: INVENTORY_RESERVED
+        OS->>OS: Update order (CONFIRMED)
+    else Stock insufficient
+        IS->>MQ: INVENTORY_INSUFFICIENT
+        MQ->>OS: INVENTORY_INSUFFICIENT
+        OS->>OS: Update order (CANCELLED)
+    end
+
+    Note over OS,UI: Frontend polls for status updates (no WebSocket deployed)
